@@ -1,25 +1,40 @@
 package com.algaworks.algasensors.temperature.monitoring.infraestructure.rabbitmq;
 
 import com.algaworks.algasensors.temperature.monitoring.api.model.TemperatureLogData;
+import com.algaworks.algasensors.temperature.monitoring.domain.service.SensorAlertService;
 import com.algaworks.algasensors.temperature.monitoring.domain.service.TemperatureMonitoringService;
+import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+
+import static com.algaworks.algasensors.temperature.monitoring.infraestructure.rabbitmq.RabbitMQConfig.QUEUE_ALERTING;
+import static com.algaworks.algasensors.temperature.monitoring.infraestructure.rabbitmq.RabbitMQConfig.QUEUE_PROCESS_TEMPERATURE;
+
 @Slf4j
 @Component
+@AllArgsConstructor
 public class RabbitMQListener {
 
     private final TemperatureMonitoringService temperatureMonitoringService;
+    private final SensorAlertService sensorAlertService;
 
-    public RabbitMQListener(TemperatureMonitoringService temperatureMonitoringService) {
-        this.temperatureMonitoringService = temperatureMonitoringService;
+    @RabbitListener(queues = QUEUE_PROCESS_TEMPERATURE, concurrency = "2-3")
+    @SneakyThrows
+    public void handleProcessingTemperature(@Payload TemperatureLogData temperatureLogData) {
+        temperatureMonitoringService.processTemperatureReading(temperatureLogData);
+        Thread.sleep(Duration.ofSeconds(5));
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
-    public void handle(@Payload TemperatureLogData temperatureLog) {
-        temperatureMonitoringService.processTemperatureReading(temperatureLog);
+    @RabbitListener(queues = QUEUE_ALERTING, concurrency = "2-3")
+    @SneakyThrows
+    public void handleAlerting(@Payload TemperatureLogData temperatureLogData) {
+        sensorAlertService.handleAlert(temperatureLogData);
+        Thread.sleep(Duration.ofSeconds(5));
     }
 
 }

@@ -18,6 +18,9 @@ spring:
       ddl-auto: update
     show-sql: 'true'
   rabbitmq:
+    listener:
+      simple:
+        prefetch: 5
     host: "localhost"
     port: 5672
     username: "rabbitmq"
